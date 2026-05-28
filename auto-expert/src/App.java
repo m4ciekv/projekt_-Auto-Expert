@@ -50,11 +50,20 @@ public class App {
                 case 3:
                     System.out.println("\n--- DODAWANIE NOWEGO POJAZDU ---");
                     System.out.print("Podaj numer VIN: ");
-                    String vin = scanner.nextLine();
+                    String vin = scanner.nextLine().trim();
+                    
+                    //walidacja numeru VIN - musi mieć dokładnie 17 znaków
+                    if (vin.length() != 17) {
+                        System.out.println("Błąd: Numer VIN musi mieć 17 znaków!" + " (Wprowadzono: " + vin.length() + ")");
+                        break;
+                    }
+                    //Gdy vin poprawny:
                     System.out.print("Podaj markę: ");
                     String marka = scanner.nextLine();
+                    
                     System.out.print("Podaj model: ");
                     String model = scanner.nextLine();
+                    
                     System.out.print("Podaj ID właściciela (klienta): ");
                     
                     int klientId = -1;
