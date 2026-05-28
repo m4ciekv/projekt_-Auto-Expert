@@ -142,37 +142,67 @@ public class DatabaseManager {
 
     // MODUŁ ROZLICZENIOWY: Automatyczne wyliczanie kosztów 
     public static void wyswietlRozliczenia() {
-        // Pobieramy dane naprawy oraz markę/model auta przez INNER JOIN
-        String sql = "SELECT n.id, n.opis_usterki, n.roboczogodziny, n.koszt_czesci, p.marka, p.model " +
-                     "FROM naprawy n " +
-                     "INNER JOIN pojazdy p ON n.pojazd_vin = p.vin";
-                     
-        final double STAWKA_GODZINOWA = 150.0; // Stawka za roboczogodzine w warsztacie (150 PLN/rbh)
+    // Pobieramy dane naprawy oraz markę/model auta przez INNER JOIN
+    String sql = "SELECT n.id, n.opis_usterki, n.roboczogodziny, n.koszt_czesci, p.marka, p.model " +
+                 "FROM naprawy n " +
+                 "INNER JOIN pojazdy p ON n.pojazd_vin = p.vin";
+                 
+    final double STAWKA_GODZINOWA = 150.0; // Stawka za roboczogodzinę w warsztacie (150 PLN/rbh)
 
-        try (Connection conn = connect();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+    try (Connection conn = connect();
+         Statement stmt = conn.createStatement();
+         ResultSet rs = stmt.executeQuery(sql)) {
+        
+        System.out.println("\n================ MODUŁ ROZLICZENIOWY ================");
+        boolean mamyNaprawy = false;
+        
+        // Tworzymy Scanner do obsługi decyzji o płatności bezgotówkowej
+        java.util.Scanner bankScanner = new java.util.Scanner(System.in);
+        
+        while (rs.next()) {
+            mamyNaprawy = true;
+            double godziny = rs.getDouble("roboczogodziny");
+            double czesci = rs.getDouble("koszt_czesci");
             
-            System.out.println("\n================ MODUŁ ROZLICZENIOWY ================");
-            while (rs.next()) {
-                double godziny = rs.getDouble("roboczogodziny");
-                double czesci = rs.getDouble("koszt_czesci");
-                
-                // Algorytm wyliczenia sumy końcowej: (godziny * 150) + części
-                double kosztRobocizny = godziny * STAWKA_GODZINOWA;
-                double sumaKoncowa = kosztRobocizny + czesci;
+            // Algorytm wyliczenia sumy końcowej: (godziny * 150) + części
+            double kosztRobocizny = godziny * STAWKA_GODZINOWA;
+            double sumaKoncowa = kosztRobocizny + czesci;
 
-                System.out.println("Faktura nr: " + rs.getInt("id") + 
-                                   " | Auto: " + rs.getString("marka") + " " + rs.getString("model") +
-                                   "\n -> Usługa: " + rs.getString("opis_usterki") +
-                                   "\n -> Robocizna: " + godziny + " rbh x " + STAWKA_GODZINOWA + " PLN = " + kosztRobocizny + " PLN" +
-                                   "\n -> Koszt części: " + czesci + " PLN" +
-                                   "\n -> ŁĄCZNIE DO ZAPŁATY: " + sumaKoncowa + " PLN");
+            System.out.println("Faktura nr: " + rs.getInt("id") + 
+                               " | Auto: " + rs.getString("marka") + " " + rs.getString("model") +
+                               "\n -> Usługa: " + rs.getString("opis_usterki") +
+                               "\n -> Robocizna: " + godziny + " rbh x " + STAWKA_GODZINOWA + " PLN = " + kosztRobocizny + " PLN" +
+                               "\n -> Koszt części: " + czesci + " PLN" +
+                               "\n -> ŁĄCZNIE DO ZAPŁATY: " + sumaKoncowa + " PLN");
+            System.out.println("----------------------------------------------------");
+            
+            // płatność bezgotówkowa (symulacja terminala)
+            System.out.print("Czy płatność ma zostać zrealizowana bezgotówkowo kartą/telefonem? (T/N): ");
+            String decyzja = bankScanner.nextLine().trim().toUpperCase();
+            
+            if (decyzja.equals("T")) {
+                System.out.println("\n[SYSTEM BANKOWY] Inicjalizacja połączenia z terminalem płatniczym...");
+                try {
+                    Thread.sleep(1500); // 1.5 sekundy sztucznego opóźnienia dla realizmu!
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                System.out.println("[SYSTEM BANKOWY] Proszę przyłożyć kartę...");
+                try { Thread.sleep(1500); } catch (InterruptedException e) {}
+                System.out.println("✅ [SYSTEM BANKOWY] Płatność autoryzowana pomyślnie! Pobrano kwotę: " + sumaKoncowa + " PLN.");
+                System.out.println("----------------------------------------------------");
+            } else {
+                System.out.println("[INFO] Wybrano płatność gotówkową. Oczekiwanie na gotówkę w kasie.");
                 System.out.println("----------------------------------------------------");
             }
-            System.out.println("=====================================================");
-        } catch (SQLException e) {
-            System.out.println("Błąd modułu rozliczeniowego: " + e.getMessage());
         }
+        
+        if (!mamyNaprawy) {
+            System.out.println("Brak zarejestrowanych napraw w bazie danych.");
+        }
+        System.out.println("=====================================================");
+    } catch (SQLException e) {
+        System.out.println("Błąd modułu rozliczeniowego: " + e.getMessage());
     }
-    }
+}
+}
