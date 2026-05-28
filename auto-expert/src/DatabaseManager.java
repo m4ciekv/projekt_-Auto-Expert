@@ -32,11 +32,21 @@ public class DatabaseManager {
                 + "model TEXT NOT NULL,"
                 + "klient_id INTEGER,"
                 + "FOREIGN KEY(klient_id) REFERENCES klienci(id));";
+        
+                //moduł rozliczeniowy
+        String sqlNaprawy = "CREATE TABLE IF NOT EXISTS naprawy ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + "opis_usterki TEXT NOT NULL,"
+                + "roboczogodziny REAL NOT NULL,"
+                + "koszt_czesci REAL NOT NULL,"
+                + "pojazd_vin TEXT NOT NULL,"
+                + "FOREIGN KEY(pojazd_vin) REFERENCES pojazdy(vin));";
 
         try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
             stmt.execute(sqlKlienci);
             stmt.execute(sqlPojazdy);
-            System.out.println("Tabele (klienci i pojazdy) zostały utworzone poprawnie.");
+            stmt.execute(sqlNaprawy);
+            System.out.println("Tabele (klienci, pojazdy i naprawy) zostały utworzone poprawnie.");
         } catch (SQLException e) {
             System.out.println("Błąd tworzenia tabel: " + e.getMessage());
         }
@@ -57,7 +67,7 @@ public class DatabaseManager {
         }
     }
 
-    // NOWOŚĆ: Dodawanie pojazdu przypisanego do ID klienta
+    // Dodawanie pojazdu przypisanego do ID klienta
     public static void dodajPojazd(String vin, String marka, String model, int klientId) {
         String sql = "INSERT INTO pojazdy(vin, marka, model, klient_id) VALUES(?,?,?,?)";
         try (Connection conn = connect(); 
@@ -72,4 +82,97 @@ public class DatabaseManager {
             System.out.println("Błąd przy dodawaniu pojazdu: " + e.getMessage());
         }
     }
-}
+    // Wyświetlanie wszystkich klientów
+    public static void wyswietlKlientow() {
+        String sql = "SELECT id, imie, nazwisko, telefon FROM klienci";
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            System.out.println("\n================ LISTA KLIENTÓW ================");
+            while (rs.next()) {
+                System.out.println("ID: " + rs.getInt("id") + 
+                                   " | " + rs.getString("imie") + 
+                                   " " + rs.getString("nazwisko") + 
+                                   " | Tel: " + rs.getString("telefon"));
+            }
+            System.out.println("================================================");
+        } catch (SQLException e) {
+            System.out.println("Błąd przy pobieraniu klientów: " + e.getMessage());
+        }
+    }
+    // Wyświetlanie pojazdów wraz z przypisanymi właścicielami
+    public static void wyswietlPojazdy() {
+        String sql = "SELECT p.vin, p.marka, p.model, k.imie, k.nazwisko " +
+                     "FROM pojazdy p " +
+                     "INNER JOIN klienci k ON p.klient_id = k.id";
+                     
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            System.out.println("\n================ LISTA POJAZDÓW ================");
+            while (rs.next()) {
+                System.out.println("VIN: " + rs.getString("vin") + 
+                                   " | " + rs.getString("marka") + 
+                                   " " + rs.getString("model") + 
+                                   " | Właściciel: " + rs.getString("imie") + 
+                                   " " + rs.getString("nazwisko"));
+            }
+            System.out.println("================================================");
+        } catch (SQLException e) {
+            System.out.println("Błąd przy pobieraniu pojazdów: " + e.getMessage());
+        }
+    }
+    // Dodawanie nowej naprawy do bazy
+    public static void dodajNaprawe(String opis, double godziny, double czesci, String vin) {
+        String sql = "INSERT INTO naprawy(opis_usterki, roboczogodziny, koszt_czesci, pojazd_vin) VALUES(?,?,?,?)";
+        try (Connection conn = connect(); 
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, opis);
+            pstmt.setDouble(2, godziny);
+            pstmt.setDouble(3, czesci);
+            pstmt.setString(4, vin);
+            pstmt.executeUpdate();
+            System.out.println("Dodano kartę naprawy dla pojazdu o VIN: " + vin);
+        } catch (SQLException e) {
+            System.out.println("Błąd przy dodawaniu naprawy: " + e.getMessage());
+        }
+    }
+
+    // MODUŁ ROZLICZENIOWY: Automatyczne wyliczanie kosztów 
+    public static void wyswietlRozliczenia() {
+        // Pobieramy dane naprawy oraz markę/model auta przez INNER JOIN
+        String sql = "SELECT n.id, n.opis_usterki, n.roboczogodziny, n.koszt_czesci, p.marka, p.model " +
+                     "FROM naprawy n " +
+                     "INNER JOIN pojazdy p ON n.pojazd_vin = p.vin";
+                     
+        final double STAWKA_GODZINOWA = 150.0; // Stawka za roboczogodzine w warsztacie (150 PLN/rbh)
+
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            System.out.println("\n================ MODUŁ ROZLICZENIOWY ================");
+            while (rs.next()) {
+                double godziny = rs.getDouble("roboczogodziny");
+                double czesci = rs.getDouble("koszt_czesci");
+                
+                // Algorytm wyliczenia sumy końcowej: (godziny * 150) + części
+                double kosztRobocizny = godziny * STAWKA_GODZINOWA;
+                double sumaKoncowa = kosztRobocizny + czesci;
+
+                System.out.println("Faktura nr: " + rs.getInt("id") + 
+                                   " | Auto: " + rs.getString("marka") + " " + rs.getString("model") +
+                                   "\n -> Usługa: " + rs.getString("opis_usterki") +
+                                   "\n -> Robocizna: " + godziny + " rbh x " + STAWKA_GODZINOWA + " PLN = " + kosztRobocizny + " PLN" +
+                                   "\n -> Koszt części: " + czesci + " PLN" +
+                                   "\n -> ŁĄCZNIE DO ZAPŁATY: " + sumaKoncowa + " PLN");
+                System.out.println("----------------------------------------------------");
+            }
+            System.out.println("=====================================================");
+        } catch (SQLException e) {
+            System.out.println("Błąd modułu rozliczeniowego: " + e.getMessage());
+        }
+    }
+    }

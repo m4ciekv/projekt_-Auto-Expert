@@ -16,6 +16,8 @@ public class App {
             System.out.println("2. Wyświetl wszystkich klientów");
             System.out.println("3. Dodaj nowy pojazd (przypisz do klienta)");
             System.out.println("4. Wyświetl wszystkie pojazdy");
+            System.out.println("5. Dodaj nową naprawę dla pojazdu");
+            System.out.println("6. Pokaż MODUŁ ROZLICZENIOWY (Faktury)");
             System.out.println("0. Wyjście z programu");
             System.out.println("================================================");
             System.out.print("Wybierz opcję: ");
@@ -79,6 +81,43 @@ public class App {
 
                 case 4:
                     DatabaseManager.wyswietlPojazdy();
+                    break;
+
+                case 5:
+                System.out.println("\n--- DODAWANIE NOWEJ NAPRAWY ---");
+                    System.out.print("Podaj opis usterki: ");
+                    String opis = scanner.nextLine();
+                    
+                    System.out.print("Podaj liczbę roboczogodzin (np. 2,5): ");
+                    while (!scanner.hasNextDouble()) {
+                        System.out.println("Błąd: Wprowadź poprawną liczbę godzin!");
+                        scanner.next();
+                    }
+                    double godziny = scanner.nextDouble();
+                    
+                    System.out.print("Podaj koszt części w PLN (np. 450): ");
+                    while (!scanner.hasNextDouble()) {
+                        System.out.println("Błąd: Wprowadź poprawną kwotę za części!");
+                        scanner.next();
+                    }
+                    double czesci = scanner.nextDouble();
+                    scanner.nextLine(); // Czyszczenie bufora po czytaniu liczb
+                    
+                    System.out.print("Podaj 17-znakowy numer VIN pojazdu: ");
+                    String naprawaVin = scanner.nextLine().trim();
+                    
+                    // Walidacja VIN dla bezpieczeństwa relacji bazy
+                    if (naprawaVin.length() != 17) {
+                        System.out.println("Błąd: Podany VIN jest nieprawidłowy (musi mieć 17 znaków)!");
+                        break;
+                    }
+                    
+                    DatabaseManager.dodajNaprawe(opis, godziny, czesci, naprawaVin);
+                    break;
+
+                case 6:
+                //wywołanie modułu rozliczeniowego
+                    DatabaseManager.wyswietlRozliczenia();
                     break;
 
                 case 0:
