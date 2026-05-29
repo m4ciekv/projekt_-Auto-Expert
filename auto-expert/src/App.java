@@ -36,12 +36,26 @@ public class App {
                 case 1:
                     System.out.println("\n--- DODAWANIE NOWEGO KLIENTA ---");
                     System.out.print("Podaj imię: ");
-                    String imie = scanner.nextLine();
+                    String imie = scanner.nextLine().trim();
                     System.out.print("Podaj nazwisko: ");
-                    String nazwisko = scanner.nextLine();
-                    System.out.print("Podaj numer telefonu: ");
-                    String telefon = scanner.nextLine();
+                    String nazwisko = scanner.nextLine().trim();
                     
+                    // WALIDACJA 1: Sprawdzenie czy imię i nazwisko nie są puste
+                    if (imie.isEmpty() || nazwisko.isEmpty()) {
+                        System.out.println("Błąd: Imię i nazwisko nie mogą być puste!");
+                        break;
+                    }
+
+                    System.out.print("Podaj numer telefonu (9 cyfr): ");
+                    String telefon = scanner.nextLine().trim();
+                    
+                    // WALIDACJA 2: Sprawdzenie czy telefon to dokładnie 9 cyfr
+                    if (!telefon.matches("\\d{9}")) {
+                        System.out.println("Błąd: Numer telefonu musi składać się z dokładnie 9 cyfr! (Wprowadzono: " + telefon.length() + ")");
+                        break; // Powrót do menu, nie zapisujemy w bazie
+                    }
+                    
+                    // Jeśli dane przeszły walidację, zapisujemy do bazy
                     DatabaseManager.dodajKlienta(imie, nazwisko, telefon);
                     break;
 
